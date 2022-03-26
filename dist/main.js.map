@@ -1,0 +1,1 @@
+{"version":3,"file":"main.js","mappings":";;;;;AAAA,IAAMA,QAAQ,GAAG,SAAXA,QAAW;AAAA,SAAMC,OAAO,CAACC,GAAR,CAAY,OAAZ,CAAN;AAAA,CAAjB;;AACAF,QAAQ,G","sources":["webpack://yetanatheropcuanodebrowser/./views/index.js"],"sourcesContent":["const sayHello = () => console.log(\"hello\");\r\nsayHello();\r\n"],"names":["sayHello","console","log"],"sourceRoot":""}
