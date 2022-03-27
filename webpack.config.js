@@ -1,6 +1,7 @@
 const path = require("path");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const ReactRefreshWebpackPlugin = require("@pmmmwh/react-refresh-webpack-plugin");
 
 let mode = "development";
 let target = "web";
@@ -10,12 +11,15 @@ if (process.env.NODE_ENV === "production") {
 }
 const plugins = [
   new HtmlWebpackPlugin({
-    template: "./src/index.html",
+    template: "./views/src/index.html",
   }),
   new MiniCssExtractPlugin({
     filename: "[name].[contenthash].css",
   }),
 ];
+if (process.env.SERVE) {
+  plugins.push(new ReactRefreshWebpackPlugin());
+}
 module.exports = {
   mode: mode,
   plugins: plugins,
@@ -54,6 +58,16 @@ module.exports = {
       },
       {
         test: /\.js$/,
+        exclude: /node_modules/,
+        use: {
+          loader: "babel-loader",
+          options: {
+            cacheDirectory: true,
+          },
+        },
+      },
+      {
+        test: /\.jsx?$/,
         exclude: /node_modules/,
         use: {
           loader: "babel-loader",

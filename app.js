@@ -1,24 +1,17 @@
 const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
 const path = require("path");
-const opcua = require("node-opcua");
-//const Tree = require("./tree.min");
+const router = require("./routers/index");
+
 const app = express();
 
-app.set("view engine", "pug");
-app.set("views", path.join(__dirname, "./views"));
-
-let fields = [
-  { name: "Technology" },
-  { name: "News" },
-  { name: "Sports" },
-  { name: "Travel" },
-];
-
-app.get("/", (req, res) => {
-  const username = req.query.username;
-  res.render("index", { user: username, fields: fields });
-});
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.json());
+app.use(cors());
+// Основной роутер
+app.use("/", router);
 
 app.listen(3000, () => {
-  console.log("Server started listening");
+  console.log("Express WEB server started listening");
 });
