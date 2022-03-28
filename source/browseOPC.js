@@ -1,12 +1,16 @@
 const opcua = require("node-opcua");
-const endpointUrl = "opc.tcp://127.0.0.1:53530";
+const endpointUrl = "opc.tcp://192.168.0.120:4840";
 const async = require("async");
 
 const options = {
   endpointMustExist: false,
-  // requestedSessionTimeout: 30 * 60 * 1000,
+  requestedSessionTimeout: 30 * 60 * 1000,
   // connectionStrategy: { maxRetry: 1 },
   keepSessionAlive: true,
+};
+const auth = {
+  userName: "user3",
+  password: "12345678",
 };
 let theSession;
 const client = opcua.OPCUAClient.create(options);
@@ -28,7 +32,7 @@ class OPCUAClientHeandler {
         },
         // step 2 : createSession
         function (callback) {
-          client.createSession(function (err, session) {
+          client.createSession(auth, function (err, session) {
             if (!err) {
               theSession = session;
               console.log("session created!");
@@ -50,29 +54,32 @@ class OPCUAClientHeandler {
     );
   }
   browseNode(nodeId) {
-    // const nodeId = _nodeId ? _nodeId : opcua.resolveNodeId("RootFolder");
+    const opcNodes = [];
     return new Promise(function (resolve, reject) {
       theSession.browse(
         opcua.resolveNodeId(nodeId),
         function (err, browseResult) {
           if (!err) {
-            let opcNodes = [];
             browseResult.references.forEach(function (reference) {
-              //console.log(reference.browseName.toString());
               let node = new OpcNode(reference.browseName.toString());
-              node.id = reference.nodeId;
+              node.id = reference.nodeId.toString();
               node.key = reference.nodeId;
               node.class = reference.nodeClass;
-
-              if (!node) {
-                return;
-              }
+              node.value = reference.nodeId.value;
               console.log(reference);
 
               opcNodes.push(node);
             });
-            resolve(opcNodes);
-            console.log("_______________________");
+
+            if (browseResult.continuationPoint) {
+              _browseNext(browseResult.continuationPoint).then((nodes) => {
+                resolve([...opcNodes, ...nodes]);
+              });
+            } else {
+              resolve(opcNodes);
+            }
+
+            console.log("______________________");
           } else {
             reject(err);
           }
@@ -80,6 +87,10 @@ class OPCUAClientHeandler {
       );
     });
   }
+}
+async function stopOPCUAClient() {
+  if (theSession) await session.close();
+  if (client) await client.disconnect();
 }
 
 class OpcNode {
@@ -95,5 +106,75 @@ class OpcNode {
     this.isLeaf = false;
   }
 }
+const _browseNext2 = async function (contipoint) {
+  try {
+    const opcNodes = [];
+    const browseNextRequest = new opcua.BrowseNextRequest({
+      continuationPoints: [contipoint],
+    });
+    await theSession.performMessageTransaction(
+      browseNextRequest,
+      (err, res) => {
+        res.results[0].references.forEach(function (reference) {
+          let node = new OpcNode(reference.browseName.toString());
+          node.id = reference.nodeId.toString();
+          node.key = reference.nodeId;
+          node.class = reference.nodeClass;
+          node.value = reference.nodeId.value;
 
-module.exports = OPCUAClientHeandler;
+          opcNodes.push(node);
+        });
+      }
+    );
+    return opcNodes;
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+const _browseNext = function (contipoint) {
+  const opcNodes = [];
+  const browseNextRequest = new opcua.BrowseNextRequest({
+    continuationPoints: [contipoint],
+  });
+  return new Promise(function (resolve, reject) {
+    theSession.performMessageTransaction(
+      browseNextRequest,
+      function (err, response) {
+        if (err) {
+          reject(err);
+        } else {
+          if (response.results && response.results[0]) {
+            let browseResult = response.results[0];
+            browseResult.references.forEach(function (reference) {
+              let node = new OpcNode(reference.browseName.toString());
+              node.id = reference.nodeId.toString();
+              node.key = reference.nodeId;
+              node.class = reference.nodeClass;
+              node.value = reference.nodeId.value;
+              console.log(reference);
+              opcNodes.push(node);
+            });
+            if (browseResult.continuationPoint) {
+              _browseNext(browseResult.continuationPoint).then((nodes) => {
+                resolve([...opcNodes, ...nodes]);
+              });
+            } else {
+              return resolve(opcNodes);
+            }
+            return resolve(opcNodes);
+          } else {
+            return resolve(opcNodes);
+          }
+        }
+      }
+    );
+  });
+};
+function isEmpty(obj) {
+  for (let key in obj) {
+    return false;
+  }
+  return true;
+}
+(module.exports = OPCUAClientHeandler), stopOPCUAClient;
